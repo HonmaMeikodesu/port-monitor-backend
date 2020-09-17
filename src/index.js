@@ -1,13 +1,100 @@
 const express = require('express');
 const cp = require('child_process');
+const path = require('path');
 const app = express();
 const PORT = 8003;
-app.get('/get_port_data', (req, res) => {
-  cp.exec(`iftop -s -t ${req.params.time ? req.params.time : 5}`, (err, stdout, stderr) => {
+
+app.use(express.static(path.join(__dirname, '../static')));
+app.get('/get_port_data/:time', (req, res) => {
+  const time = Number.parseInt(req.params.time);
+  res.append('Access-Control-Allow-Origin', '*');
+  if (!time) {
+        res.end('request invalid');
+  }
+  cp.exec(`iftop -t -s ${time ? time : 1}`, (err, stdout, stderr) => {
     if (err) {
-      res.end('request error');
+        console.error(err);
+        res.end('request error');
     }
     res.end(stdout);
+  })
+})
+
+app.get('/get_ip_tables/', (req, res) => {
+  cp.exec('iptables -L -v -n -x | grep -E "(dpt|spt)"', (err, stdout, stderr) => {
+    if (err) {
+      console.error(err);
+      res.end('request error');
+  }
+  res.end(stdout);
+  })
+})
+
+app.get('/set_ip_tables/input/:port', (req, res) => {
+  const port = Number.parseInt(req.params.port);
+  if (port <= 1000 || port > 65535) res.end();
+  cp.exec(`iptables -A INPUT -p tcp --dport ${port}`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      res.end('200')
+    }
+  })
+})
+
+app.get('/set_ip_tables/output/:port', (req, res) => {
+  const port = Number.parseInt(req.params.port);
+  if (port <= 1000 || port > 65535) res.end();
+  cp.exec(`iptables -A OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      res.end('200')
+    }
+  })
+})
+
+app.get('/rm_ip_tables/input/:port', (req, res) => {
+  const port = Number.parseInt(req.params.port);
+  if (port <= 1000 || port > 65535) res.end();
+  cp.exec(`iptables -D INPUT -p tcp --dport ${port}`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      res.end('200')
+    }
+  })
+})
+
+app.get('/rm_ip_tables/output/:port', (req, res) => {
+  const port = Number.parseInt(req.params.port);
+  if (port <= 1000 || port > 65535) res.end();
+  cp.exec(`iptables -D OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      res.end('200')
+    }
+  })
+})
+
+app.get('/reset_ip_tables/input/', (req, res) => {
+  cp.exec(`iptables -Z INPUT`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      res.end('200')
+    }
+  })
+})
+
+app.get('/reset_ip_tables/output/', (req, res) => {
+  cp.exec(`iptables -Z OUTPUT`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      res.end('200')
+    }
   })
 })
 
