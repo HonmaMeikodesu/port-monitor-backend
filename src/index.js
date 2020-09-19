@@ -30,10 +30,10 @@ app.get('/get_ip_tables/', (req, res) => {
   })
 })
 
-app.get('/set_ip_tables/input/:port', (req, res) => {
+app.get('/set_ip_tables/:port', (req, res) => {
   const port = Number.parseInt(req.params.port);
   if (port <= 1000 || port > 65535) res.end();
-  cp.exec(`iptables -A INPUT -p tcp --dport ${port}`, (err, stdout, stderr) => {
+  cp.exec(`iptables -A INPUT -p tcp --dport ${port} && iptables -A OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
     if (err) {
       res.end('request error')
     } else {
@@ -42,10 +42,10 @@ app.get('/set_ip_tables/input/:port', (req, res) => {
   })
 })
 
-app.get('/set_ip_tables/output/:port', (req, res) => {
+app.get('/rm_ip_tables/:port', (req, res) => {
   const port = Number.parseInt(req.params.port);
   if (port <= 1000 || port > 65535) res.end();
-  cp.exec(`iptables -A OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
+  cp.exec(`iptables -D INPUT -p tcp --dport ${port} && iptables -D OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
     if (err) {
       res.end('request error')
     } else {
@@ -54,42 +54,8 @@ app.get('/set_ip_tables/output/:port', (req, res) => {
   })
 })
 
-app.get('/rm_ip_tables/input/:port', (req, res) => {
-  const port = Number.parseInt(req.params.port);
-  if (port <= 1000 || port > 65535) res.end();
-  cp.exec(`iptables -D INPUT -p tcp --dport ${port}`, (err, stdout, stderr) => {
-    if (err) {
-      res.end('request error')
-    } else {
-      res.end('200')
-    }
-  })
-})
-
-app.get('/rm_ip_tables/output/:port', (req, res) => {
-  const port = Number.parseInt(req.params.port);
-  if (port <= 1000 || port > 65535) res.end();
-  cp.exec(`iptables -D OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
-    if (err) {
-      res.end('request error')
-    } else {
-      res.end('200')
-    }
-  })
-})
-
-app.get('/reset_ip_tables/input/', (req, res) => {
-  cp.exec(`iptables -Z INPUT`, (err, stdout, stderr) => {
-    if (err) {
-      res.end('request error')
-    } else {
-      res.end('200')
-    }
-  })
-})
-
-app.get('/reset_ip_tables/output/', (req, res) => {
-  cp.exec(`iptables -Z OUTPUT`, (err, stdout, stderr) => {
+app.get('/reset_ip_tables/', (req, res) => {
+  cp.exec(`iptables -Z INPUT && iptables -Z OUTPUT`, (err, stdout, stderr) => {
     if (err) {
       res.end('request error')
     } else {
