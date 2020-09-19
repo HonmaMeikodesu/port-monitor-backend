@@ -7,6 +7,7 @@ const moment = require('moment');
 const client = redis.createClient();
 const asyncGet = promisify(client.get).bind(client);
 const asyncSet = promisify(client.setnx).bind(client);
+const asyncDel = promisify(client.del).bind(client);
 
 const app = express();
 const PORT = 8003;
@@ -63,9 +64,10 @@ app.get('/get_ip_tables/', (req, res) => {
 
 app.get('/set_ip_tables/:port', (req, res) => {
   const port = Number.parseInt(req.params.port);
-  if (port <= 1000 || port > 65535) res.end();
+  if (port <= 1000 || port > 65535) res.end('request error');
   cp.exec(`iptables -L -v -n -x | grep ${port} || iptables -A INPUT -p tcp --dport ${port} && iptables -A OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
     if (err) {
+      cp.exec(`iptables -D INPUT -p tcp --dport ${port};iptables -D OUTPUT -p tcp --sport ${port}`)
       res.end('request error')
     } else {
       const splitFlag = 'whmm';
@@ -77,12 +79,39 @@ app.get('/set_ip_tables/:port', (req, res) => {
 
 app.get('/rm_ip_tables/:port', (req, res) => {
   const port = Number.parseInt(req.params.port);
-  if (port <= 1000 || port > 65535) res.end();
+  if (port <= 1000 || port > 65535) res.end('request error');
   cp.exec(`iptables -D INPUT -p tcp --dport ${port} && iptables -D OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
     if (err) {
       res.end('request error')
     } else {
-      res.end('200')
+      asyncDel(port)
+        .then(r => res.end(200))
+        .catch(e => res.end('request error'))
+    }
+  })
+})
+
+app.get('/set_ip_tables/:port', (req, res) => {
+  const port = Number.parseInt(req.params.port);
+  if (port <= 1000 || port > 65535) res.end('request error');
+  cp.exec(`iptables -D INPUT -p tcp --dport ${port} && iptables -D OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
+    if (err) {
+      res.end('request error')
+    } else {
+      asyncDel(port)
+        .then(r => {
+          cp.exec(`iptables -L -v -n -x | grep ${port} || iptables -A INPUT -p tcp --dport ${port} && iptables -A OUTPUT -p tcp --sport ${port}`, (err, stdout, stderr) => {
+            if (err) {
+              cp.exec(`iptables -D INPUT -p tcp --dport ${port};iptables -D OUTPUT -p tcp --sport ${port}`)
+              res.end('request error')
+            } else {
+              const splitFlag = 'whmm';
+              asyncSet(port, port.toString().concat(splitFlag, moment().format('YYYY-MM-DD HH:mm:ss')));
+               res.end('200')
+            }
+          })
+        })
+        .catch(e => res.end('request error'))
     }
   })
 })
