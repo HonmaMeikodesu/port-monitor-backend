@@ -41,13 +41,13 @@ app.get('/get_ip_tables/', (req, res) => {
     filteredPorts.forEach(port => {
       promiseList.push(asyncGet(port));
     })
-    Promise.all(promiseList).then(res => {
-      res.forEach(time => {
+    Promise.all(promiseList).then(r => {
+      r.forEach(time => {
         const splitFlag = 'whmm'
         const p = time.split(splitFlag)[0];
         const bt = time.split(splitFlag)[1];
-        const inputR = `(?<!\/)(\d+)\s+tcp.*dpt\:${p}`;
-        const outputR = `(?<!\/)(\d+)\s+tcp.*spt\:${p}`;
+        const inputR = `(?<!\\/)(\\d+)\\s+tcp.*dpt\\:${p}`;
+        const outputR = `(?<!\\/)(\\d+)\\s+tcp.*spt\\:${p}`;
         const inputReg = new RegExp(inputR, 'g');
         const outputReg = new RegExp(outputR, 'g');
         const inputFlow = inputReg.exec(stdout)[1];
