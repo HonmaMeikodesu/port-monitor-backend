@@ -4,6 +4,8 @@ const path = require('path');
 const redis = require('redis');
 const { promisify } = require("util");
 const client = redis.createClient();
+const asyncGet = promisify(client.get).bind(client);
+const asyncSet = promisify(client.set).bind(client);
 
 const app = express();
 const PORT = 8003;
@@ -35,7 +37,7 @@ app.get('/get_ip_tables/', (req, res) => {
     const filteredPorts = allPorts.filter((val, idx) => allPorts.indexOf(val) === idx);
     const promiseList = [];
     filteredPorts.forEach(port => {
-      promiseList.push(promisify(client.get(port)).bind(client));
+      promiseList.push(asyncGet(port));
     })
     Promise.all(promiseList).then(res => {
       console.log(res);
