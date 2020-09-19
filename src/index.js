@@ -3,6 +3,7 @@ const cp = require('child_process');
 const path = require('path');
 const redis = require('redis');
 const { promisify } = require("util");
+const moment = require('moment');
 const client = redis.createClient();
 const asyncGet = promisify(client.get).bind(client);
 const asyncSet = promisify(client.set).bind(client);
@@ -36,13 +37,27 @@ app.get('/get_ip_tables/', (req, res) => {
     const allPorts = stdout.match(reg).map(port => port.replace('dpt:', ''));
     const filteredPorts = allPorts.filter((val, idx) => allPorts.indexOf(val) === idx);
     const promiseList = [];
+    const portMap = new Map();
     filteredPorts.forEach(port => {
       promiseList.push(asyncGet(port));
     })
     Promise.all(promiseList).then(res => {
-      console.log(res);
+      res.forEach(time => {
+        const splitFlag = 'whmm'
+        const p = time.split(splitFlag)[0];
+        const bt = time.split(splitFlag)[1];
+        const inputR = `(?<!\/)(\d+)\s+tcp.*dpt\:${p}`;
+        const outputR = `(?<!\/)(\d+)\s+tcp.*spt\:${p}`;
+        const inputReg = new RegExp(inputR, 'g');
+        const outputReg = new RegExp(outputR, 'g');
+        const inputFlow = inputReg.exec(stdout)[1];
+        const outputFlow = outputReg.exec(stdout)[1];
+        const totalFlow = (Number.parseFloat(inputFlow) + Number.parseFloat(outputFlow)).toFixed(1);
+        portMap.set(p, Object.assign({}, {i: inputFlow, o: outputFlow, t: totalFlow.toString(), bt}))
+      })
+      const serializedData = JSON.stringify([...portMap])
+      res.end(serializedData);
     })
-    res.end(stdout);
   })
 })
 
